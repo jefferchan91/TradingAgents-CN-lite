@@ -21,8 +21,8 @@ config = DEFAULT_CONFIG.copy()
 ta = TradingAgentsGraph(debug=True, config=config)
 
 # forward propagate
-ticker = "002594"
-trade_date = "2026-05-25"
+ticker = "TSLA"
+trade_date = "2026-07-17"
 
 final_state, decision = ta.propagate(ticker, trade_date)
 print(f"\n{'='*60}")
