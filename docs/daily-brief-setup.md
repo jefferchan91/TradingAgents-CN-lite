@@ -34,12 +34,14 @@ Apps Script 跑在 Google 侧，负责把草稿真正发出去，且无需本环
 - Routine 用 `quote`（现价/涨跌幅）与 `technicalIndicators`（RSI、20/50/200 日均线）
   取权威数据；A 股在美东晚间已收盘，取到的即当日有效收盘价。
 
-### 方案 B（免费）：放行新浪域名 + 本仓库脚本
-- 在环境网络策略里将 **`hq.sinajs.cn`** 加入出网白名单。
-- Routine 里执行 `python scripts/fetch_quotes.py --json` 直接抓取实时行情
-  （新浪财经，单次批量请求覆盖 A 股 + 美股，带时间戳）。脚本已在本仓库。
-- 放行前脚本会返回 403（预期）；放行后即可用。
-- 备选源：如更想用东方财富，把域名换成 `push2.eastmoney.com` 并相应改脚本即可。
+### 方案 B（免费）：放行行情域名 + 本仓库脚本（双源兜底）
+- `scripts/fetch_quotes.py` 采用**双源**：优先新浪财经批量取数，单只缺失时自动
+  切换东方财富补齐。两个源只要有一个放行且可用即有数据。
+- 在环境网络策略里放行（至少其一，建议都放行以获得冗余）：
+  - **`hq.sinajs.cn`** — 主源（新浪，单次批量覆盖 A 股 + 美股）
+  - **`push2.eastmoney.com`** — 兜底源（东财，逐只补取）
+- Routine 里执行 `python scripts/fetch_quotes.py --json` 即可，带时间戳与来源标注。
+- 未放行的源返回 403 属预期，脚本会自动尝试另一个源。
 
 > 两种都可作为主源；WebSearch 仅用于**新闻**与价格**兜底**。
 
@@ -62,7 +64,7 @@ Apps Script 跑在 Google 侧，负责把草稿真正发出去，且无需本环
 1. 取价格与技术指标：
    - 优先用 FMP：quote(现价/涨跌幅)、technicalIndicators(RSI14、SMA20/50/200)、
      chart(近60日日线)。
-   - 若已放行新浪域名，也可运行 `python scripts/fetch_quotes.py --json` 取实时价。
+   - 若已放行行情域名，也可运行 `python scripts/fetch_quotes.py --json` 取实时价（新浪+东财双源）。
    - 二者都不可用时才用 WebSearch 取价，并严格执行下方【价格数据规则】。
 2. 每只股票用 WebSearch（有 FMP 时叠加 FMP news）取过去 1-3 天最新可靠新闻 2-4 条，
    优先权威财媒/公司公告/券商研报，附来源与日期，注意甄别可靠性。
@@ -73,7 +75,7 @@ Apps Script 跑在 Google 侧，负责把草稿真正发出去，且无需本环
    （美东日期）。
 
 【价格数据规则 · 必须严格执行】
-1. 价格优先级：FMP quote > 新浪脚本 > WebSearch。能用前者绝不用搜索价。
+1. 价格优先级：FMP quote > 行情脚本(新浪+东财) > WebSearch。能用前者绝不用搜索价。
 2. 每个价格必须紧跟“截至 YYYY-MM-DD（数据源）”，如“101.27 元（截至 2026-08-01，FMP）”。
 3. 仅能从 WebSearch 取到价格时，必须两次不同来源交叉核对，取最新一条并注明日期。
 4. 若某价格距当前已超过 1 个交易日，必须在其后标注“⚠️数据滞后 N 天，非最新”，
@@ -137,4 +139,4 @@ function sendDailyBriefDraft() {
 python scripts/fetch_quotes.py          # 表格
 python scripts/fetch_quotes.py --json   # JSON
 ```
-在未放行 `hq.sinajs.cn` 的环境中返回 403 属正常。
+在两个行情域名(`hq.sinajs.cn` / `push2.eastmoney.com`)都未放行的环境中返回取数失败属正常。
